@@ -4,8 +4,8 @@
 # import necessary Packages below:
 import numpy
 import pandas as pd
-import techAnalysis
-from pairsTrade import corrMatrix
+import techAnalysis as techanalysis
+#from pairsTrade import corrMatrix
 
 
 def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, settings):
@@ -15,9 +15,9 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
     #pos_B = bollingerBands(CLOSE, settings)
     #pos = pos_B
     #pos_S = stochOsc(HIGH, LOW, CLOSE, settings)
-    pos_RSI = RSI(CLOSE, settings)
+    pos_RSI = techanalysis.RSI(CLOSE, settings)
     total = pos_RSI
-    
+
     #pos_MACD = MACD(CLOSE, settings)
     #total = pos_MACD
 
@@ -56,8 +56,8 @@ def compute_weights(pos, settings):
     # Index 23
     index = 0.3 * total_exposure
     pos[16:39] = (pos[16:39]/numpy.sum(pos[16:39])) * index
-    
-    # Bond 10 
+
+    # Bond 10
     bond = 0.5 * total_exposure
     pos[39:49] = (pos[39:49]/numpy.sum(pos[39:49])) * bond
 
@@ -77,19 +77,19 @@ def mySettings():
 
     # Futures Contracts
     cash = ['CASH']
-    # 15 currency 
+    # 15 currency
     currency = ['F_AD', 'F_BP', 'F_CD', 'F_DX', 'F_EC', 'F_JY', 'F_MP', 'F_SF', 'F_LR', 'F_ND',
                 'F_RR', 'F_RF', 'F_RP', 'F_RY', 'F_TR']
     # 5 interset
     interest = ['F_ED', 'F_SS', 'F_ZQ', 'F_EB', 'F_F']
     # 23 index
-    index = ['F_ES', 'F_MD', 'F_NQ', 'F_RU', 'F_XX', 'F_YM', 'F_AX', 'F_CA', 'F_LX', 'F_VX', 
-            'F_AE', 'F_DM', 'F_AH', 'F_DZ', 'F_FB', 'F_FM', 'F_FP', 'F_FY', 'F_NY', 'F_PQ', 
+    index = ['F_ES', 'F_MD', 'F_NQ', 'F_RU', 'F_XX', 'F_YM', 'F_AX', 'F_CA', 'F_LX', 'F_VX',
+            'F_AE', 'F_DM', 'F_AH', 'F_DZ', 'F_FB', 'F_FM', 'F_FP', 'F_FY', 'F_NY', 'F_PQ',
             'F_SH', 'F_SX', 'F_GD']
     # 10 bond
     bond = ['F_FV', 'F_TU', 'F_TY', 'F_US', 'F_DT', 'F_UB', 'F_UZ', 'F_GS', 'F_CF', 'F_GX']
     # 17 agri
-    agriculture = ['F_BO', 'F_C', 'F_CC', 'F_CT', 'F_FC', 'F_KC', 'F_LB', 'F_LC', 'F_LN', 'F_NR', 
+    agriculture = ['F_BO', 'F_C', 'F_CC', 'F_CT', 'F_FC', 'F_KC', 'F_LB', 'F_LC', 'F_LN', 'F_NR',
                     'F_O', 'F_OJ', 'F_S', 'F_SB', 'F_SM', 'F_W', 'F_DL']
     # 10 energy
     energy = ['F_CL', 'F_HO', 'F_NG', 'F_RB', 'F_BG', 'F_BC', 'F_LU', 'F_FL', 'F_HP', 'F_LQ']
@@ -105,7 +105,7 @@ def mySettings():
     #settings['markets'] =  index
     #settings['markets'] =  currency
     #settings['markets'] = interest
-    
+
 
     settings['beginInSample'] = '20180119'
     settings['endInSample'] = '20200331'
@@ -127,4 +127,3 @@ if __name__ == '__main__':
     import quantiacsToolbox
     # results = quantiacsToolbox.runts(__file__, plotEquity = False)
     results = quantiacsToolbox.runts(__file__)
-

@@ -4,7 +4,7 @@ import ta
 import pandas as pd
 
 '''
-Indicators chosen should be uncorrelated 
+Indicators chosen should be uncorrelated
 
 Technical Analysis attemps to understand the market sentiment behind price trends by looking for patterns and trends
 rather than analyzing securities fundamental attributes
@@ -40,13 +40,13 @@ def MACD(CLOSE, settings):
         pos[market] = val
     return pos
 
-    
+
 
 
 # MOMENTUM INDICATOR
 ## Stochastic Oscillator (STOCH)
 '''
-Predicted on the assumption that closing prices should close near the same direction 
+Predicted on the assumption that closing prices should close near the same direction
 as the current trend
 '''
 def stochOsc(HIGH, LOW, CLOSE, settings):
@@ -61,8 +61,8 @@ def stochOsc(HIGH, LOW, CLOSE, settings):
 
         so = ta.momentum.StochasticOscillator(high, low, close, n = period)
         val = so.stoch_signal().iloc[-1]
-        
-        last = 0 
+
+        last = 0
         if val > 80:
             last = -1
         elif val < 20:
@@ -72,7 +72,7 @@ def stochOsc(HIGH, LOW, CLOSE, settings):
 
 
 
-## Relative Strength Index (RSI) 
+## Relative Strength Index (RSI)
 '''
 Tracks oversold and overbought elvels by measuring the velocity of price movements
 Buy when oversold (rsi < 30)
@@ -83,7 +83,7 @@ def RSI(CLOSE, settings):
     nMarkets = len(settings['markets'])
     period = settings['rsi_period']
     pos = np.zeros(nMarkets)
-    
+
     for market in range(nMarkets):
         close = pd.Series(CLOSE[:, market])
         RSI = ta.momentum.RSIIndicator(close, n=period)
@@ -99,7 +99,7 @@ def RSI(CLOSE, settings):
     return pos
 
 # VOLATILITY INDICATOR
-## Bollinger Band - typical to use 20 days SMA 
+## Bollinger Band - typical to use 20 days SMA
 '''
 closer the prices move to the upper band, means the mover overbought the market
 closer prices move to lower band, more oversold the market
@@ -125,7 +125,7 @@ def bollingerBands(CLOSE, settings):
             last = -1
         elif bb_low_indicator.iloc[-1] == -1:
             last = 1
-        
+
         pos[market] = last
     return pos
 
@@ -148,7 +148,7 @@ if a market closes high on the prior days close, the volume is added to the indi
 ** try to capture the liquidity
 
 ** the number is not relevant (as different securities are bound to have different volume)
-** it is the differences in volumes on up days and down days that matters 
+** it is the differences in volumes on up days and down days that matters
 
 more volumes on up days, will get a OBV a drastic increase
 if there are 5 down days, but not a lot things happening, then the OBV won't be going down too much (although the prices has come down)
@@ -171,4 +171,4 @@ def OBV(VOLUME, CLOSE, settings):
         OBV_ind = ta.volume.OnBalanceVolumeIndicator(close, volume)
 
         obv = OBV_ind.on_balance_volume()
-    return pos    
+    return pos
