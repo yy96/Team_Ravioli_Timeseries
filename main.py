@@ -5,6 +5,7 @@
 import numpy
 import pandas as pd
 import techAnalysis as techanalysis
+import meanReversionStrats
 #from pairsTrade import corrMatrix
 
 
