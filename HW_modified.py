@@ -19,7 +19,7 @@ markets = ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
            'F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD','F_F']
 
 start,end = '20180119', '20200331'
-interval, period = 14, 15
+interval, period = 14,14
 trend, seas = 'add', 'add'
 threshold = 0.5
 
@@ -34,7 +34,7 @@ def myTradingSystem(DATE, CLOSE, settings):
     nMarkets=CLOSE.shape[1]
     weights = np.zeros(nMarkets)
     periodLonger=200
-    print('{} {}'.format(DATE[0],DATE[-1]))
+    print('\n{} {}'.format(DATE[0],DATE[-1]))
     build = settings['counter']%interval==0
     num = settings['counter']%interval
     filtered=0
@@ -63,7 +63,7 @@ def myTradingSystem(DATE, CLOSE, settings):
             accuracy = ''
             
         if model:
-            pred = model.forecast(num)[-1]        
+            pred = model.forecast(num+1)[-1]        
             if not np.isnan(pred):
                 print('{}==={}'.format(accuracy, settings['markets'][i]))
                 weights[i] = np.log(pred/curr_market[-1])  
