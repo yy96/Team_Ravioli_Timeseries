@@ -50,11 +50,10 @@ def EMA_FUNCTION(data, number):
             p[i][0] = q
     return p
 
-##DEFINE MACD_DIF  实现MACD的DIF线生成，name是股票名称，number1是较短的天数，number2是较长的天数，返回MACD_DIF的数据
-def MACD_DIF(name, number1, number2):
-    macd = EMA(name,number1)-EMA(name,number2)  ###基于指数移动平均生成，若想使用其他的移动平均法，需要在这里将EMA 换成其他的函数
-    MACD_DIF = macd
-    return MACD_DIF
+
+def MACD_DIF(data, number1, number2):
+    macd = EMA(data,number1)-EMA(data,number2)
+    return macd
 
 ##DEFINE MACD_DEA，实现MACD——DEA 线的生成，name是股票名称，number1是DIF线中较短的天数，number2是DIF线中较长的天数，number3是DEA线设的天数
 def MACD_DEA(name, number1,number2,number3):
@@ -174,12 +173,12 @@ def RSI_E(name, number):  ###时间基于指数移动平均的RSI线数据生成
     return rsi
 
 
-##define the bbiboll 实现基于简单移动平均的BBIBOLL数据生成，number1,2,3,4分别为4条移动平均线使用的天数，BBIBOLL就是计算4天移动平均线的平均值
-def BBIBOLL(name, number1, number2, number3, number4):
-    p1 = SMA(name, number1)
-    p2 = SMA(name, number2)
-    p3 = SMA(name, number3)
-    p4 = SMA(name, number4)
+##define the bbiboll
+def BBIBOLL(data, number1, number2, number3, number4):
+    p1 = SMA(data, number1)
+    p2 = SMA(data, number2)
+    p3 = SMA(data, number3)
+    p4 = SMA(data, number4)
     bbiboll = np.zeros((len(p4), 1))
     for i in range(0, len(p1)):
         s = p1[i][0] + p2[i][0] + p3[i][0] + p4[i][0]
@@ -189,8 +188,6 @@ def BBIBOLL(name, number1, number2, number3, number4):
 
 
 ##define the upper line of the BBIBOLL
-###实现为BBIBOLL线输出上行线的数据，number1，2,3,4为BBIBOLL的数据，number5为计算标准差的天数，
-##number6为上行线与基准数据之差为number6倍标准差
 def BBIBOLL_UP(name, number1, number2, number3, number4, number5, number6):
     p = BBIBOLL(name, number1, number2, number3, number4)
     for i in range(0, len(p)):
