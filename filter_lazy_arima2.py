@@ -18,7 +18,7 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
     weights = np.zeros(nMarkets)
     periodLonger=240
     print('{} {}'.format(DATE[0],DATE[-1]))
-    build = settings['counter']%20==0
+    build = settings['counter']%7==0
     for market in range(nMarkets):
         curr_market = log_diff[-periodLonger:,market]
         train = curr_market[:220]
@@ -29,19 +29,12 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
                 #print('build')
                 model = auto_arima(train, error_action='ignore', suppress_warnings=True, seasonal=True, m=12)#sarima
                 #model = auto_arima(train, error_action='ignore', suppress_warnings=True)#arima
-                predicted = []
-                
-                for day in range(20):
-                    new_train = curr_market[:180+day]
-                    model.fit(new_train)
-                    prediction = model.predict(n_periods=1)[0]
-                    #print('{0:.16f}'.format(prediction))
-                    predicted.append(prediction)
                 print('==={}:{}'.format(settings['markets'][market], model.params()))
+                predicted = model.predict(n_periods=20)
                 accuracy = eval_model(predicted, test)
                 #print('here')
                 print('accuracy:',accuracy)
-                if accuracy > 0.6:    
+                if accuracy > 0.5:    
                     #print(predicted)
                     #model = auto_arima(train, error_action='ignore', suppress_warnings=True, seasonal=True, m=4)#sarima
                     #model = auto_arima(train, error_action='ignore', suppress_warnings=True)#arima
