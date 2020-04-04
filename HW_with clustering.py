@@ -3,7 +3,8 @@ import numpy as np
 from statsmodels.tsa.api import ExponentialSmoothing
 from sklearn.cluster import AgglomerativeClustering as agg
 from scipy.spatial.distance import cosine
-import warnings,dtw
+from helper import eval_exponential
+import warnings
 warnings.filterwarnings("ignore")
 
 markets = ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
@@ -17,13 +18,15 @@ markets = ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
            'F_FL','F_FM','F_FP','F_FY','F_GX','F_HP','F_LR','F_LQ',
            'F_ND','F_NY','F_PQ','F_RR','F_RF','F_RP','F_RY','F_SH',
            'F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD','F_F']
+#log: 7(10015/3.7, 909/4.2); 14(12015/3.9); 1477(12020/3.9;10020/4)
 
 start,end = '20180119', '20200331'
-interval, period, smooth_alpha = 14, 14, 14
 trend, seas = 'add', 'add'
 threshold, num_cluster = 0.5, 3
+interval, period, smooth_alpha = 7,7,7 
+lookback, sample = 90,9
 
-def amss_func(x,y):###
+def dist_func(x,y):###
     return cosine(np.diff(x),np.diff(y))
 
 def smooth(M, interval):
@@ -48,13 +51,6 @@ def compute_dist_matrix(M, dist_func):
             dist_mat[i,j], dist_mat[j,i] = dist, dist
     return dist_mat
 
-def eval_model(predicted, observed):
-    pred = (predicted < 0).astype(int)
-    obs = (observed < 0).astype(int)
-    results = (pred == obs).astype(int)
-    accuracy = np.mean(results)
-    return accuracy
-
 def group_norm(num_cluster, included, cluster, weights, show,weightage):
     included = np.array(included) ##1-89
     for i in range(num_cluster):
@@ -70,7 +66,7 @@ def group_norm(num_cluster, included, cluster, weights, show,weightage):
 
 def cluster(M, smooth_alpha, num_cluster, acc_list):
     M = normalize(smooth(M, smooth_alpha))
-    D = compute_dist_matrix(M, amss_func)
+    D = compute_dist_matrix(M, dist_func)
     clusters = agg(n_clusters=num_cluster, affinity='precomputed', linkage = 'average').fit_predict(D)
     weightage = np.ones(num_cluster)
     for i in range(num_cluster):
@@ -78,33 +74,25 @@ def cluster(M, smooth_alpha, num_cluster, acc_list):
     weightage = weightage/np.sum(weightage)
     return clusters, weightage
 
-def eval_model(predicted, observed):
-    pred = (predicted < 0).astype(int)
-    obs = (observed < 0).astype(int)
-    results = (pred == obs).astype(int)
-    accuracy = np.mean(results)
-    return accuracy
     
 def myTradingSystem(DATE, CLOSE, settings):
     nMarkets=CLOSE.shape[1]
     weights = np.zeros(nMarkets)
-    periodLonger=200
     print('\n{} {}'.format(DATE[0],DATE[-1]))
     build = settings['counter']%interval==0
     num = settings['counter']%interval
+    CLOSE = np.log(CLOSE)
     filtered, included, acc_list = 0, [], []
     settings['counter']+=1
     
     for i in range(1,nMarkets):
-        curr_market = CLOSE[-periodLonger:,i]
-        train = curr_market[:180]
-        test = curr_market[180:]
+        curr_market = CLOSE[-lookback-sample:,i]
+        train = curr_market[:-sample]
+        test = curr_market[sample:]
         pred, model=None, None
         
         if build:
-            train_model = ExponentialSmoothing(train, seasonal_periods=period, trend=trend, seasonal=seas).fit(use_boxcox=True)
-            predicted = np.diff(train_model.forecast(20))
-            accuracy = eval_model(predicted, np.diff(test))
+            accuracy = eval_exponential(train, test, period, trend, seas)
             accuracy = round(accuracy,2)
             if accuracy > threshold:
                 model = ExponentialSmoothing(curr_market, seasonal_periods=period, 
@@ -120,17 +108,17 @@ def myTradingSystem(DATE, CLOSE, settings):
             accuracy = ''
             
         if model:
-            pred = model.forecast(num+1)[-1]        
+            pred = model.forecast(num+1)[-1]
             if not np.isnan(pred):
                 print('{}==={}'.format(accuracy, settings['markets'][i]))
-                weights[i] = np.log(pred/curr_market[-1])  
+                weights[i] = pred-curr_market[-1]
             else: 
                 filtered+=1
                 print('{}==={}: no pred'.format(accuracy, settings['markets'][i]))
     if build: ##update value
-        clusters, weightage = cluster(CLOSE[-periodLonger:,included], smooth_alpha, num_cluster, np.array(acc_list))
-        settings['included']=included ## indices of markets included: 0-88
-        settings['clusters']=clusters ## cluster id of the included markets: 0-88
+        clusters, weightage = cluster(CLOSE[-lookback:,included], smooth_alpha, num_cluster, np.array(acc_list))
+        settings['included']=included 
+        settings['clusters']=clusters 
         settings['weightage']=weightage
         print(r'{}/{} markets filtered'.format(filtered, nMarkets-1))
     else: ## use old values

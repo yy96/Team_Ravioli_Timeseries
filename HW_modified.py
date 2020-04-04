@@ -3,7 +3,8 @@ import numpy as np
 from statsmodels.tsa.api import ExponentialSmoothing
 from sklearn.cluster import AgglomerativeClustering as agg
 from scipy.spatial.distance import cosine
-import warnings,dtw
+from helper import eval_exponential
+import warnings
 warnings.filterwarnings("ignore")
 
 markets = ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
@@ -19,21 +20,15 @@ markets = ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
            'F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD','F_F']
 
 start,end = '20180119', '20200331'
-interval, period = 14,14
 trend, seas = 'add', 'add'
-threshold = 0.5
+threshold = 0.5 
+interval, period = 7,7
+lookback,sample = 90,9
 
-def eval_model(predicted, observed):
-    pred = (predicted < 0).astype(int)
-    obs = (observed < 0).astype(int)
-    results = (pred == obs).astype(int)
-    accuracy = np.mean(results)
-    return accuracy
-    
 def myTradingSystem(DATE, CLOSE, settings):
     nMarkets=CLOSE.shape[1]
+    CLOSE = np.log(CLOSE)
     weights = np.zeros(nMarkets)
-    periodLonger=200
     print('\n{} {}'.format(DATE[0],DATE[-1]))
     build = settings['counter']%interval==0
     num = settings['counter']%interval
@@ -41,18 +36,16 @@ def myTradingSystem(DATE, CLOSE, settings):
     settings['counter']+=1
     
     for i in range(1,nMarkets):
-        curr_market = CLOSE[-periodLonger:,i]
-        train = curr_market[:180]
-        test = curr_market[180:]
+        curr_market = CLOSE[-lookback-sample:,i]
+        train = curr_market[:-sample]
+        test = curr_market[-sample:]
         pred, model=None, None
         
         if build:
-            train_model = ExponentialSmoothing(train, seasonal_periods=period, trend=trend, seasonal=seas).fit(use_boxcox=True)
-            predicted = np.diff(train_model.forecast(20))
-            accuracy = eval_model(predicted, np.diff(test))
+            accuracy = eval_exponential(train, test, period, trend,seas)
             accuracy = round(accuracy,2)
             if accuracy > threshold:
-                model = ExponentialSmoothing(curr_market, seasonal_periods=period, 
+                model = ExponentialSmoothing(curr_market[sample:], seasonal_periods=period, 
                                              trend=trend, seasonal=seas).fit(use_boxcox=True)
             else: 
                 filtered+=1
@@ -66,7 +59,7 @@ def myTradingSystem(DATE, CLOSE, settings):
             pred = model.forecast(num+1)[-1]        
             if not np.isnan(pred):
                 print('{}==={}'.format(accuracy, settings['markets'][i]))
-                weights[i] = np.log(pred/curr_market[-1])  
+                weights[i] = pred-curr_market[-1]
             else: 
                 filtered+=1
                 print('{}==={}: no pred'.format(accuracy, settings['markets'][i]))

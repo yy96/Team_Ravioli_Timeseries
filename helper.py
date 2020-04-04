@@ -1,9 +1,10 @@
 import numpy as np
 from pmdarima import auto_arima
-from statsmodels.tsa.api import ExponentialSmoothing
+from statsmodels.tsa.api import ExponentialSmoothing as eps
 
 # evaluate the performace of the model based on price signal
 def eval_model(predicted, observed):
+    if np.all(np.isnan(predicted)): return 0.01
     pred = (predicted < 0).astype(int)
     obs = (observed < 0).astype(int)
     results = (pred == obs).astype(int)
@@ -21,11 +22,10 @@ def eval_autoarima(train, test):
 
     return arima_accuracy
 
-def eval_exponential(train, test):
-    exponential_train_model = ExponentialSmoothing(train, seasonal_periods=12, trend='add', seasonal='add').fit(use_boxcox=True)
-    exponential_predicted = np.diff(exponential_train_model.forecast(20))
+def eval_exponential(train, test, period, trend,seas):
+    exponential_train_model = eps(train, seasonal_periods=period, trend=trend,seasonal=seas).fit(use_boxcox=True)
+    exponential_predicted = np.diff(exponential_train_model.forecast(len(test)))
     exponential_accuracy = eval_model(exponential_predicted, np.diff(test))
-
     return exponential_accuracy
 
 def pred_autoarima(arima_model, curr_market, market_name):
@@ -37,8 +37,7 @@ def pred_autoarima(arima_model, curr_market, market_name):
     return arima_pred
 
 def pred_exponential(curr_market, market_name):
-    exponential_model = ExponentialSmoothing(curr_market, seasonal_periods=12, trend='add',
-                                             seasonal='add').fit(use_boxcox=True)
+    exponential_model = eps(curr_market, seasonal_periods=12, trend='add', seasonal='add').fit(use_boxcox=True)
     exponential_pred = exponential_model.forecast(1)[0]
     a, b, c = exponential_model.params['smoothing_level'], exponential_model.params['smoothing_slope'], \
               exponential_model.params['smoothing_seasonal']
