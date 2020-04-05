@@ -4,12 +4,7 @@ from statsmodels.tsa.api import ExponentialSmoothing as eps
 
 # evaluate the performace of the model based on price signal
 def eval_model(predicted, observed):
-    if np.all(np.isnan(predicted)): return 0.01
-    pred = (predicted < 0).astype(int)
-    obs = (observed < 0).astype(int)
-    results = (pred == obs).astype(int)
-    accuracy = np.mean(results)
-    return accuracy
+    return np.mean((predicted*observed >0).astype(int))
 
 def eval_autoarima(train, test):
     # sarima_train_model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True, seasonal=True, m=4)
@@ -22,11 +17,16 @@ def eval_autoarima(train, test):
 
     return arima_accuracy
 
-def eval_exponential(train, test, period, trend,seas):
-    exponential_train_model = eps(train, seasonal_periods=period, trend=trend,seasonal=seas).fit(use_boxcox=True)
-    exponential_predicted = np.diff(exponential_train_model.forecast(len(test)))
-    exponential_accuracy = eval_model(exponential_predicted, np.diff(test))
-    return exponential_accuracy
+def eval_exponential(curr_market, train_period, test_period, period):
+    acc_list = []
+    for i in range(3):
+        last_train = i+train_period
+        train = curr_market[i:last_train]
+        test = curr_market[last_train:last_train+test_period]
+        model = eps(train, seasonal_periods=period, trend="add",seasonal="add").fit(use_boxcox=True)
+        pred = np.diff(model.forecast(len(test)))
+        acc_list.append(eval_model(pred, np.diff(test)))
+    return sum(acc_list)/len(acc_list)
 
 def pred_autoarima(arima_model, curr_market, market_name):
     # sarima_model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True, seasonal=True, m=4)
