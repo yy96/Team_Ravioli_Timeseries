@@ -1,68 +1,52 @@
-
 ### Quantiacs Trend Following Trading System Example
 # import necessary Packages below:
 import numpy as np
-from pmdarima import auto_arima
+import numpy
+from pmdarima.arima import auto_arima
 
-def eval_model(predicted, observed):
-    pred = [1 if value < 0 else 0 for value in predicted]
-    obs = (observed < 0).astype(int)
-    results = (pred == obs).astype(int)
-    accuracy = np.mean(results)
-    return accuracy
-    
 def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, settings):
     nMarkets=CLOSE.shape[1]
     log_diff = np.diff(np.log(CLOSE),axis=0)
-    # = CLOSE
     weights = np.zeros(nMarkets)
-    periodLonger=200
+    periodLonger=240
+    closes = CLOSE[-1,:]
+    opens = OPEN[-1,:]
     print('{} {}'.format(DATE[0],DATE[-1]))
-    build = settings['counter']%7==0
-    for market in range(nMarkets):
-        curr_market = log_diff[-periodLonger:,market]
-        train = curr_market[:180]
-        test = curr_market[180:]
+    build = settings['counter']%20==0
+    for i in range(nMarkets):
+        curr_market = log_diff[-periodLonger:,i]
+        prev_close = closes[i]
+        prev_open = opens[i]
         
         try:
             if build:
-                #print('build')
                 model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True, seasonal=True, m=12)#sarima
-                #model = auto_arima(train, error_action='ignore', suppress_warnings=True)#arima
-                print('==={}:{}'.format(settings['markets'][market], model.params()))
-                predicted = model.predict(n_periods=20)
-                accuracy = eval_model(predicted, test)
-                #print('here')
-                print('accuracy:',accuracy)
-                if accuracy > 0.5:    
-                    #print(predicted)
-                    #model = auto_arima(train, error_action='ignore', suppress_warnings=True, seasonal=True, m=4)#sarima
-                    #model = auto_arima(train, error_action='ignore', suppress_warnings=True)#arima
-                    settings['models'][market] = model
-                    #print('==={}:{}'.format(settings['markets'][i], model.params()))
-                else:
-                    model = None
-
+                #model = auto_arima(cur_market, error_action='ignore', suppress_warnings=True)#arima
+                settings['models'][i] = model
+                print('==={}:{}'.format(settings['markets'][i], model.params()))
             else:
-                #print('not build')
-                model = settings['models'][market]
-                print('==={}'.format(settings['markets'][market]))
+                model = settings['models'][i]
+                print('==={}'.format(settings['markets'][i]))
                 
-            if model:
-                #print('model')
+            if model:                
                 model.fit(curr_market)
                 pred = model.predict(n_periods=1)[0]
-                print('predicted: ',pred)
+                long = prev_close > prev_open
+                predicted_long = pred > 0
+                if long != predicted_long:
+                    pred = 0
+                print(pred)
             
             if pred:
-                weights[market] = pred
-                #if pred>0: weights[market]=1
-                #else: weights[market]=-1
+                weights[i] = pred
+                #if pred>0: weights[i]=1
+                #else: weights[i]=-1
                 
-        #except:
+        except Exception as e:
             #print('cash')
-        except Exception as e: pass
-            
+            #pass
+            print(e)
+                       
     settings['counter']+=1
     return weights, settings
 
