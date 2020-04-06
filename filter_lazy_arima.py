@@ -27,7 +27,7 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
         try:
             if build:
                 #print('build')
-                model = auto_arima(train, error_action='ignore', suppress_warnings=True, seasonal=True, m=12)#sarima
+                model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True, seasonal=True, m=12)#sarima
                 #model = auto_arima(train, error_action='ignore', suppress_warnings=True)#arima
                 predicted = []
                 
@@ -47,6 +47,8 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
                     #model = auto_arima(train, error_action='ignore', suppress_warnings=True)#arima
                     settings['models'][market] = model
                     #print('==={}:{}'.format(settings['markets'][i], model.params()))
+                else:
+                    model = None
 
             else:
                 #print('not build')
