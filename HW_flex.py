@@ -19,17 +19,21 @@ markets = ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
            'F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD','F_F']
 
 start,end = '20180119', '20200430'
-threshold = 0.5 
-interval, period = 7,7#77;714;730;
+threshold = 0.55 
+interval = 7
 test_period = interval
+
+
+def period(lookback):
+    return max(int(lookback/25),7)
 
 def set_train_period(CLOSE, t_dict, a_dict):
     nMarkets=CLOSE.shape[1]
     for future_id in range(1, nMarkets):
         max_acc, train_period = 0, 0
         cur = np.array([k for k,g in groupby(CLOSE[:,future_id])])
-        for i in range(100,500,90):
-            accuracy = check(cur, i)
+        for i in range(100,500,70):
+            accuracy, temp_model = check(cur, i)
             if accuracy > max_acc:
                 max_acc = accuracy
                 train_period = i
@@ -41,30 +45,33 @@ def set_train_period(CLOSE, t_dict, a_dict):
 
 def check(data, lookback):
     accuracy=0
-    temp_model = eps(data[-lookback:], seasonal_periods=period, trend="add", seasonal="add").fit(use_boxcox=True)
+    temp_model = eps(data[-lookback:], seasonal_periods=period(lookback), trend="add", seasonal="add").fit(use_boxcox=True)
     if np.all(~np.isnan(temp_model.forecast(test_period))): ## pass nan test
         train = data[-lookback-test_period-3:]
-        accuracy = eval_exponential(train, lookback, test_period, period)
-    return accuracy 
+        accuracy = eval_exponential(train, lookback, test_period, max(int(lookback/30),3))
+    return accuracy, temp_model 
 
 def adjust_period(full_data, prev_acc, prev_period, test_period):
     if not prev_period: prev_period=100
-    max_acc, lookback, model = prev_acc, prev_period, eps(full_data[-prev_period:], seasonal_periods=period, 
-                                                          trend="add", seasonal="add").fit(use_boxcox=True)
-    for i in [-60,-30,30,60]:
+    max_acc, best_period, model = 0, prev_period, None
+    
+    for i in [0,30,-30]:
+        new_period = prev_period+i
+        if new_period<50: new_period=100
+        elif new_period>500: new_period=350
+
         try:
-            new_period = prev_period+i
-            if new_period<50: new_period=200
-            elif new_period>500: new_period=350
-            accuracy = check(full_data, new_period)
-            if accuracy>max_acc:
-                lookback = new_period
-                model = temp_model
-                max_acc = accuracy
+            accuracy, temp_model = check(full_data, new_period)
         except:
-            pass
-    print("{}-->{}".format(prev_period,lookback))
-    return lookback, model, round(max_acc,2)
+            continue
+        
+        if accuracy>max_acc:
+            best_period = new_period
+            model = temp_model
+            max_acc = accuracy
+
+    print("{}-->{}, {}".format(prev_period,best_period, period(best_period)))
+    return best_period, model, round(max_acc,2)
 
 
 def myTradingSystem(DATE, CLOSE, settings):
@@ -94,9 +101,11 @@ def myTradingSystem(DATE, CLOSE, settings):
                 print('   {}%==={}: inaccurate'.format(int(100*accuracy), settings['markets'][i]))
             settings['models'][i] = model
             settings['train_period'][i] = train_period
+            settings['accuracies'][i] = accuracy
         else:
             model = settings['models'][i]
-            accuracy=0
+            accuracy = settings['models'][i]
+            accuracy= settings['accuracies'][i]
                     
         if model:
             pred = model.forecast(num+1)[-1]        
@@ -106,7 +115,10 @@ def myTradingSystem(DATE, CLOSE, settings):
             else: 
                 filtered+=1
                 print('   {}%==={}: non-convergent'.format(int(accuracy*100), settings['markets'][i]))
-    if build: print(r'{}/{} markets filtered'.format(filtered, nMarkets-1))     
+    if build:
+        settings['num_trades'].append(nMarkets-1-filtered)
+        print(r'{}/{} markets filtered'.format(filtered, nMarkets-1))
+    print("avg markets traded daily: {}".format(np.mean(settings['num_trades'])))
     return weights, settings
 
 
@@ -121,6 +133,7 @@ def mySettings():
     settings['models'] = [None]*len(settings['markets'])
     settings['train_period'] = [None]*len(settings['markets'])
     settings['accuracies'] = [0]*len(settings['markets'])
+    settings['num_trades']=[]
     settings['counter']=0
     return settings
 
