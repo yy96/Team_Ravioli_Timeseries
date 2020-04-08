@@ -1,49 +1,25 @@
 import numpy as np
 import pandas as pd
-from techAnalysis import BollingerBand, RSI, stochOsc, MACD
+from techAnalysis import BollingerBand, RSI, MACD
 from techAnalysis import MACD_strat, RSI_strat, BB_strat
 import quantiacsToolbox
-# from pairsTrade import corrMatrix
-
 
 def mainSettings():
     ''' Define your trading system settings here '''
 
     settings= {}
 
-    # Futures Contracts
-    cash = ['CASH']
-    # 15 currency 
-    currency = ['F_AD', 'F_BP', 'F_CD', 'F_DX', 'F_EC', 'F_JY', 'F_MP', 'F_SF', 'F_LR', 'F_ND',
-                'F_RR', 'F_RF', 'F_RP', 'F_RY', 'F_TR']
-    # 5 interset
-    interest = ['F_ED', 'F_SS', 'F_ZQ', 'F_EB', 'F_F']
-    # 23 index
-    index = ['F_ES', 'F_MD', 'F_NQ', 'F_RU', 'F_XX', 'F_YM', 'F_AX', 'F_CA', 'F_LX', 'F_VX', 
-            'F_AE', 'F_DM', 'F_AH', 'F_DZ', 'F_FB', 'F_FM', 'F_FP', 'F_FY', 'F_NY', 'F_PQ', 
-            'F_SH', 'F_SX', 'F_GD']
-    # 10 bond
-    bond = ['F_FV', 'F_TU', 'F_TY', 'F_US', 'F_DT', 'F_UB', 'F_UZ', 'F_GS', 'F_CF', 'F_GX']
-    # 17 agri
-    agriculture = ['F_BO', 'F_C', 'F_CC', 'F_CT', 'F_FC', 'F_KC', 'F_LB', 'F_LC', 'F_LN', 'F_NR', 
-                    'F_O', 'F_OJ', 'F_S', 'F_SB', 'F_SM', 'F_W', 'F_DL']
-    # 10 energy
-    energy = ['F_CL', 'F_HO', 'F_NG', 'F_RB', 'F_BG', 'F_BC', 'F_LU', 'F_FL', 'F_HP', 'F_LQ']
-    # 5 metal
-    metal = ['F_GC', 'F_HG', 'F_PA', 'F_PL', 'F_SI']
-
-
-    '''These 3 futures not listed on the website F_VF, F_VT, F_VW. Hence, only 85 futures above'''
-
-    #settings['markets'] = cash + currency + index + bond + agriculture + metal + energy
-
-    settings['markets'] = cash + currency + interest + index + bond + agriculture + metal + energy + ['F_VF', 'F_VT', 'F_VW']
-    #settings['markets'] =  agriculture + energy + metal
-    #settings['markets'] =  bond
-    #settings['markets'] =  index
-    #settings['markets'] =  currency
-    #settings['markets'] = interest
-    
+    settings['markets'] = ['CASH'] + ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
+        'F_DX','F_EC','F_ED','F_ES','F_FC','F_FV','F_GC','F_HG',
+        'F_HO','F_JY','F_KC','F_LB','F_LC','F_LN','F_MD','F_MP',
+        'F_NG','F_NQ','F_NR','F_O','F_OJ','F_PA','F_PL','F_RB',
+        'F_RU','F_S','F_SB','F_SF','F_SI','F_SM','F_TU','F_TY',
+        'F_US','F_W','F_XX','F_YM','F_AX','F_CA','F_DT','F_UB',
+        'F_UZ','F_GS','F_LX','F_SS','F_DL','F_ZQ','F_VX','F_AE',
+        'F_BG','F_BC','F_LU','F_DM','F_AH','F_CF','F_DZ','F_FB',
+        'F_FL','F_FM','F_FP','F_FY','F_GX','F_HP','F_LR','F_LQ',
+        'F_ND','F_NY','F_PQ','F_RR','F_RF','F_RP','F_RY','F_SH',
+        'F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD','F_F']
 
     settings['beginInSample'] = '20180119'
     settings['endInSample'] = '20200331'
@@ -76,7 +52,6 @@ class main(object):
         bb_indicator = settings['bb_indicator']
 
         overall_pos = np.zeros(nMarkets)
-        overall_pos[0] = 1
 
         for i in range(1, nMarkets):
             if macd_indicator[i] == 1:
@@ -91,10 +66,6 @@ class main(object):
                 val = BollingerBand(pd.Series(CLOSE[:, i]), settings)
                 overall_pos[i] += val
 
-
-        # To account for the number of valid indicators in each security
-        valid_indicators = macd_indicator + rsi_indicator + bb_indicator
-        test = np.divide(overall_pos, valid_indicators)
         return overall_pos, settings
 
     def mySettings(self):
@@ -120,15 +91,15 @@ if __name__ == '__main__':
 
     for i in range(1, nMarkets):
         try:
-            stat_MACD = quantiacsToolbox.stats(mktEquity_MACD[503:, i])
+            stat_MACD = quantiacsToolbox.stats(mktEquity_MACD[-56:, i])
             if stat_MACD['sharpe'] > 0:
                 macd_indicator[i] = 1
 
-            stat_RSI = quantiacsToolbox.stats(mktEquity_RSI[503:, i])
+            stat_RSI = quantiacsToolbox.stats(mktEquity_RSI[-56:, i])
             if stat_RSI['sharpe'] > 0:
                 rsi_indicator[i] = 1
 
-            stat_BB = quantiacsToolbox.stats(mktEquity_BB[503:, i])
+            stat_BB = quantiacsToolbox.stats(mktEquity_BB[-56:, i])
             if stat_BB['sharpe'] > 0:
                 bb_indicator[i] = 1
         except:
