@@ -8,20 +8,20 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
     nMarkets=CLOSE.shape[1]
     log_diff = np.diff(np.log(CLOSE),axis=0)
     weights = np.zeros(nMarkets)
-    periodLonger=240
+    periodLonger=200
     closes = CLOSE[-1,:]
     opens = OPEN[-1,:]
     print('{} {}'.format(DATE[0],DATE[-1]))
-    build = settings['counter']%20==0
+    build = settings['counter']%30==0
     for i in range(nMarkets):
         curr_market = log_diff[-periodLonger:,i]
         prev_close = closes[i]
         prev_open = opens[i]
-        
+                
         try:
             if build:
-                model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True, seasonal=True, m=12)#sarima
-                #model = auto_arima(cur_market, error_action='ignore', suppress_warnings=True)#arima
+                model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True, seasonal=True, m=4,stepwise=True)#sarima
+                #model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True)#arima
                 settings['models'][i] = model
                 print('==={}:{}'.format(settings['markets'][i], model.params()))
             else:
@@ -68,8 +68,12 @@ def mySettings():
                             'F_FB','F_FL','F_FM','F_FP','F_FY','F_GX','F_HP','F_LR',
                             'F_LQ','F_ND','F_NY','F_PQ','F_RR','F_RF','F_RP','F_RY',
                             'F_SH','F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD']
+    # Back testing
     settings['beginInSample'] = '20180119'
     settings['endInSample'] = '20200331'
+    # #Validation
+    # settings['beginInSample'] = '20171030'
+    # settings['endInSample'] = '20191231'
     settings['lookback']= 504
     settings['budget']= 10**6
     settings['slippage']= 0.05

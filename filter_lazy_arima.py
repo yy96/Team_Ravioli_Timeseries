@@ -5,6 +5,7 @@ import numpy as np
 from pmdarima import auto_arima
 
 def eval_model(predicted, observed):
+    #print(len(predicted), len(observed))
     pred = [1 if value < 0 else 0 for value in predicted]
     obs = (observed < 0).astype(int)
     results = (pred == obs).astype(int)
@@ -16,32 +17,33 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
     log_diff = np.diff(np.log(CLOSE),axis=0)
     # = CLOSE
     weights = np.zeros(nMarkets)
-    periodLonger=240
+    periodLonger=200
     print('{} {}'.format(DATE[0],DATE[-1]))
-    build = settings['counter']%20==0
+    build = settings['counter']%28==0
     for market in range(nMarkets):
         curr_market = log_diff[-periodLonger:,market]
-        train = curr_market[:220]
-        test = curr_market[220:]
+        train = curr_market[:190]
+        test = curr_market[190:]
         
+                
         try:
             if build:
-                #print('build')
-                model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True, seasonal=True, m=12)#sarima
-                #model = auto_arima(train, error_action='ignore', suppress_warnings=True)#arima
+                model = auto_arima(train, error_action='ignore', suppress_warnings=True, seasonal=True, m=4,stepwise=True)#sarima
+                #model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True)#arima
                 predicted = []
                 
-                for day in range(20):
-                    new_train = curr_market[:180+day]
+                for day in range(10):
+                    new_train = curr_market[:190+day]
                     model.fit(new_train)
                     prediction = model.predict(n_periods=1)[0]
+                    #print(prediction, curr_market[180+day])
                     #print('{0:.16f}'.format(prediction))
                     predicted.append(prediction)
                 print('==={}:{}'.format(settings['markets'][market], model.params()))
                 accuracy = eval_model(predicted, test)
                 #print('here')
                 print('accuracy:',accuracy)
-                if accuracy > 0.6:    
+                if accuracy >= 0.6:    
                     #print(predicted)
                     #model = auto_arima(train, error_action='ignore', suppress_warnings=True, seasonal=True, m=4)#sarima
                     #model = auto_arima(train, error_action='ignore', suppress_warnings=True)#arima
@@ -54,6 +56,7 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
                 #print('not build')
                 model = settings['models'][market]
                 print('==={}'.format(settings['markets'][market]))
+                pred = 0
                 
             if model:
                 #print('model')
@@ -68,7 +71,9 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
                 
         #except:
             #print('cash')
-        except Exception as e: pass
+        except Exception as e: 
+            #print(e) 
+            pass
             
     settings['counter']+=1
     return weights, settings
@@ -91,8 +96,12 @@ def mySettings():
                             'F_FB','F_FL','F_FM','F_FP','F_FY','F_GX','F_HP','F_LR',
                             'F_LQ','F_ND','F_NY','F_PQ','F_RR','F_RF','F_RP','F_RY',
                             'F_SH','F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD']
+    # Back testing
     settings['beginInSample'] = '20180119'
     settings['endInSample'] = '20200331'
+    # # Validation
+    # settings['beginInSample'] = '20171030'
+    # settings['endInSample'] = '20191231'
     settings['lookback']= 504
     settings['budget']= 10**6
     settings['slippage']= 0.05
