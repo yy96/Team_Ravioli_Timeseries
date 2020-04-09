@@ -67,7 +67,7 @@ def mySettings():
                             'F_AE','F_BG','F_BC','F_LU','F_DM','F_AH','F_CF','F_DZ',
                             'F_FB','F_FL','F_FM','F_FP','F_FY','F_GX','F_HP','F_LR',
                             'F_LQ','F_ND','F_NY','F_PQ','F_RR','F_RF','F_RP','F_RY',
-                            'F_SH','F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD']
+                            'F_SH','F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD', 'F_F']
     # Back testing
     settings['beginInSample'] = '20180119'
     settings['endInSample'] = '20200331'
