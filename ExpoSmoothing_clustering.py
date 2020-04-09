@@ -24,7 +24,8 @@ markets = ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
            'F_ND','F_NY','F_PQ','F_RR','F_RF','F_RP','F_RY','F_SH',
            'F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD','F_F']
 
-start,end = '20180119','20200331'#'20171030', '20191231'#
+#start,end = '20180119','20200331'
+start,end = '20171030', '20191231'
 threshold = 0.6
 interval = 10 ### interval between finding a new look-back and fitting a new model for each market
 period = 5
@@ -65,7 +66,7 @@ def set_train_period(path, CLOSE, t_dict, a_dict):
         print('{}:({},{}%)'.format(markets[future_id-1], train_period, int(max_acc*100)))    
         t_dict[future_id] = train_period
         a_dict[future_id] = max_acc
-    save_initial(path, t_dict, a_dict)
+    #save_initial(path, t_dict, a_dict)
     return t_dict, a_dict
 
 
@@ -210,20 +211,22 @@ def myTradingSystem(DATE, CLOSE, settings):
                 print(' {}%==={}: non-convergent'.format(int(accuracy*100), settings['markets'][i]))
 
     acc = settings['accuracies']
-    included = np.nonzero(weights)[0]        
-    save_daily(path, date, weights, acc)
+    included = np.nonzero(weights)[0]
+    settings['num_trades'].append(included.size)
+    print("(average daily trades/ total): ({}/{})".format(round(np.mean(settings['num_trades']),2),nMarkets-1))
+    #save_daily(path, date, weights, acc)
 
     if cluster_on:
-        if build: ##update value
-            clusters, weightage = cluster(CLOSE[-cluster_period:,included], num_cluster, np.array(acc)[included], dist_func, smooth_alpha)
-            settings['clusters']=clusters 
-            settings['weightage']=weightage
-            settings['included']=included
-        else: ## use old values
-            clusters = settings['clusters']
-            weightage = settings['weightage']
-            included=settings['included']
-        weights = group_norm(num_cluster, included, clusters, np.array(weights), build, weightage)           
+        #if build: ##update value
+        clusters, weightage = cluster(CLOSE[-cluster_period:,included], num_cluster, np.array(acc)[included], dist_func, smooth_alpha)
+        settings['clusters']=clusters 
+        settings['weightage']=weightage
+        settings['included']=included
+##        else: ## use old values
+##            clusters = settings['clusters']
+##            weightage = settings['weightage']
+##            included=settings['included']
+        weights = group_norm(num_cluster, included, clusters, np.array(weights), False, weightage)           
         
     return weights, settings
 
