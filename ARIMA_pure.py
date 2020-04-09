@@ -1,4 +1,3 @@
-### Quantiacs Trend Following Trading System Example
 # import necessary Packages below:
 import numpy as np
 import numpy
