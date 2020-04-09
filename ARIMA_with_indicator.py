@@ -1,4 +1,3 @@
-### Quantiacs Trend Following Trading System Example
 # import necessary Packages below:
 import numpy as np
 import numpy
@@ -8,11 +7,16 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
     nMarkets=CLOSE.shape[1]
     log_diff = np.diff(np.log(CLOSE),axis=0)
     weights = np.zeros(nMarkets)
+    
+    # set the period for the range of data the model will ingest
     periodLonger=200
     closes = CLOSE[-1,:]
     opens = OPEN[-1,:]
     print('{} {}'.format(DATE[0],DATE[-1]))
+    
+    # set the No. of days until a new model is built (ARIMA/SARIMA order to be re-identified)
     build = settings['counter']%30==0
+    
     for i in range(nMarkets):
         curr_market = log_diff[-periodLonger:,i]
         prev_close = closes[i]
@@ -33,18 +37,18 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
                 pred = model.predict(n_periods=1)[0]
                 long = prev_close > prev_open
                 predicted_long = pred > 0
+                
+                # if the sign prediction from the model differs from the momentum indicator, no investment will be made
                 if long != predicted_long:
                     pred = 0
                 print(pred)
             
+            # if the sign prediction align with the momentum indicator, 
+            # portfolio allocation will be based on result of prediction
             if pred:
                 weights[i] = pred
-                #if pred>0: weights[i]=1
-                #else: weights[i]=-1
                 
         except Exception as e:
-            #print('cash')
-            #pass
             print(e)
                        
     settings['counter']+=1
