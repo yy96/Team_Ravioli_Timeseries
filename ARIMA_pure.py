@@ -32,8 +32,6 @@ def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, setting
             
             if pred:
                 weights[i] = pred
-                #if pred>0: weights[i]=1
-                #else: weights[i]=-1
                 
         except Exception as e:
             #print('cash')
