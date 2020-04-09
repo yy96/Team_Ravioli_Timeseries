@@ -5,7 +5,10 @@ import numpy as np
 from pmdarima import auto_arima
 
 def eval_model(predicted, observed):
-    #print(len(predicted), len(observed))
+    """
+    evaluation function to assess the sign accuracy for
+    validation period
+    """
     pred = [1 if value < 0 else 0 for value in predicted]
     obs = (observed < 0).astype(int)
     results = (pred == obs).astype(int)
@@ -15,59 +18,58 @@ def eval_model(predicted, observed):
 def myTradingSystem(DATE, OPEN, HIGH, LOW, CLOSE, VOL, exposure, equity, settings):
     nMarkets=CLOSE.shape[1]
     log_diff = np.diff(np.log(CLOSE),axis=0)
-    # = CLOSE
     weights = np.zeros(nMarkets)
+    # set the period for train and evaluate the built model
     periodLonger=200
     print('{} {}'.format(DATE[0],DATE[-1]))
+    # set the No. of days until a new model is built (ARIMA/SARIMA order to be re-identified)
     build = settings['counter']%28==0
+    
     for market in range(nMarkets):
         curr_market = log_diff[-periodLonger:,market]
         train = curr_market[:190]
+        # left the last 10 days to be the validation period to evaluate the model
         test = curr_market[190:]
-        
-                
+                 
         try:
             if build:
                 model = auto_arima(train, error_action='ignore', suppress_warnings=True, seasonal=True, m=4,stepwise=True)#sarima
                 #model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True)#arima
                 predicted = []
                 
+                # evluate the sign prediction for the model
                 for day in range(10):
                     new_train = curr_market[:190+day]
                     model.fit(new_train)
                     prediction = model.predict(n_periods=1)[0]
-                    #print(prediction, curr_market[180+day])
-                    #print('{0:.16f}'.format(prediction))
                     predicted.append(prediction)
                 print('==={}:{}'.format(settings['markets'][market], model.params()))
                 accuracy = eval_model(predicted, test)
-                #print('here')
                 print('accuracy:',accuracy)
+                
+                # only when model is evaluated to be accurate, it will be chosen to make an investment
                 if accuracy >= 0.6:    
-                    #print(predicted)
-                    #model = auto_arima(train, error_action='ignore', suppress_warnings=True, seasonal=True, m=4)#sarima
-                    #model = auto_arima(train, error_action='ignore', suppress_warnings=True)#arima
                     settings['models'][market] = model
                     #print('==={}:{}'.format(settings['markets'][i], model.params()))
                 else:
                     model = None
-
+            
+            # model will not be re-built if it doesn't reach 28 days' period
             else:
-                #print('not build')
                 model = settings['models'][market]
                 print('==={}'.format(settings['markets'][market]))
                 pred = 0
-                
+            
+            # if there's a model, make a prediction
             if model:
                 #print('model')
                 model.fit(curr_market)
                 pred = model.predict(n_periods=1)[0]
                 print('predicted: ',pred)
             
+            # use the preidction to decide portfolio allocation
             if pred:
                 weights[market] = pred
-                #if pred>0: weights[market]=1
-                #else: weights[market]=-1
                 
         #except:
             #print('cash')
