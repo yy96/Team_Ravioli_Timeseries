@@ -27,6 +27,9 @@ python ARIMA_with_eval.py
 python ARIMA_with_indicator.py
 ```
 
-### Holt-Winters 
-[here](link here)
+### [Holt-Winters](https://github.com/yy96/Team_Ravioli_Timeseries/blob/master/ExpoSmoothing_clustering.py)
+
+```sh
+python ExpoSmoothing_clustering.py
+```
 It uses the Holt-Winters model combined with clustering when deciding the portfolio allocation ratios.
