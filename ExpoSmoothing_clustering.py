@@ -1,17 +1,16 @@
 #========== Loading packages ==========# 
 import quantiacsToolbox as qt
 import numpy as np
-from statsmodels.tsa.api import ExponentialSmoothing as eps
 from sklearn.cluster import AgglomerativeClustering as agg
 from scipy.spatial.distance import cosine
 from itertools import groupby
-from helper import eval_exponential, validate, check, read_saved_data, read_setup, save_initial, save_daily, save_output
+from helper import eval_exponential, validate, check
 import warnings,os
 warnings.filterwarnings("ignore")
 
 
 
-#========== HW parameters ==========#
+#========== HoltWinters parameters ==========#
 markets = ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
            'F_DX','F_EC','F_ED','F_ES','F_FC','F_FV','F_GC','F_HG',
            'F_HO','F_JY','F_KC','F_LB','F_LC','F_LN','F_MD','F_MP',
@@ -24,34 +23,31 @@ markets = ['F_AD','F_BO','F_BP','F_C','F_CC','F_CD','F_CL','F_CT',
            'F_ND','F_NY','F_PQ','F_RR','F_RF','F_RP','F_RY','F_SH',
            'F_SX','F_TR','F_EB','F_VF','F_VT','F_VW','F_GD','F_F']
 
-#start,end = '20180119','20200331'
-start,end = '20171030', '20191231'
-threshold = 0.6
-interval = 10 ### interval between finding a new look-back and fitting a new model for each market
-period = 5
-test_period = interval
-path = save_output(interval,period,threshold)
+start,end = '20180119','20200331'
+#start,end = '20171030', '20191231'
+threshold = 0.6 ### accuracy threshold
+interval = 10 ### refit interval
+period = 5 ### assume markets has weekly seasonality
+test_period = interval ###used to calculate model prediction accuracy in training data
 
 
 
 #========== Cluster parameters ==========#
-smooth_alpha=5
-num_cluster= 3
-cluster_period=500
 cluster_on = True
-dist_func = cosine
+smooth_alpha=5 ### take average every 5 datapoints (weekly average) to reduce variations when comparing vector distance which affects clustering precision
+num_cluster= 5 ### setting this too large might lead to one-member cluster, which is bad as we will be investing too much on this one market
+cluster_period=500 ### setting this longer gives clustering algo more information and thus better clusters
+dist_func = cosine ### can apply other distance functions such as correlation; mahattan distance, L1, L2 norm etc
 
 
 
 #========== Helper functions: Dynamic lookback ==========#
-def set_train_period(path, CLOSE, t_dict, a_dict):
+def set_train_period(CLOSE, t_dict, a_dict):
     """
     helper function that is called only once at the start to search for lookback
     period that has highest accuracy in predicting direction of changefor each market.
     In the subsequent days, call adjust_period() instead to tune the lookback period based on previous lookback period
     """
-    if "periods.txt" in os.listdir(path):
-        return read_setup(path)
     
     nMarkets=CLOSE.shape[1]
     for future_id in range(1, nMarkets):
@@ -66,7 +62,6 @@ def set_train_period(path, CLOSE, t_dict, a_dict):
         print('{}:({},{}%)'.format(markets[future_id-1], train_period, int(max_acc*100)))    
         t_dict[future_id] = train_period
         a_dict[future_id] = max_acc
-    #save_initial(path, t_dict, a_dict)
     return t_dict, a_dict
 
 
@@ -100,20 +95,16 @@ def adjust_period(full_data, prev_period):
 
 
 #========== Helper functions: Clustering ==========#
-def smooth(M, interval):
-    smoothed = np.mean(M[:interval,],axis=0)
-    for i in range(1, int(M.shape[0]/interval)):
-        start = i*interval
-        new = np.mean(M[start:start+interval,],axis=0)
-        smoothed = np.vstack((smoothed,new))
-    return smoothed
-
-def normalize(included_M):
-    m = np.mean(included_M, axis=0)
-    se = np.std(included_M, axis=0)
-    return (included_M-m)/se
-
 def cluster(M, num_cluster, acc_list, dist_func, smooth_alpha):
+    """
+    @param M: the matrix of data points to be clustered. Each column is a market
+    @param num_cluster: user-defined
+    @param acc_list: list of accuracies with ith entry being the model accuracy for ith market's model; this affects 
+                     each clusters' weightage. Cluster with higher average cluster will have a higher weightage
+    @param dist_func: func(x,y) returns the distance between x and y
+    @param smooth_alpha: smoothen each markets to make the clustering easier. When smooth_alpha=5,
+                         by taking weekly average price instead of using daily price direcly 
+    """
     M = normalize(smooth(M, smooth_alpha))
     D = compute_dist_matrix(M, dist_func)
     clusters = agg(n_clusters=num_cluster, affinity='precomputed', linkage = 'average').fit_predict(D)
@@ -123,7 +114,29 @@ def cluster(M, num_cluster, acc_list, dist_func, smooth_alpha):
     weightage = weightage/np.sum(weightage)
     return clusters, weightage
 
+
+def smooth(M, interval):
+    """helper function called by cluster() to smooth a vector"""
+    smoothed = np.mean(M[:interval,],axis=0)
+    for i in range(1, int(M.shape[0]/interval)):
+        start = i*interval
+        new = np.mean(M[start:start+interval,],axis=0)
+        smoothed = np.vstack((smoothed,new))
+    return smoothed
+
+
+def normalize(included_M):
+    """helper function called by cluster() to normalize a vector"""
+    m = np.mean(included_M, axis=0)
+    se = np.std(included_M, axis=0)
+    return (included_M-m)/se
+
+
 def compute_dist_matrix(M, dist_func):
+    """
+    helper function called by cluster() to calculate pairwise distance among columns in M
+    @return: a matrix where [i,j] entry is the distance between ith and jth markets' vectors in M
+    """
     n_markets =  M.shape[1]
     dist_mat = np.zeros((n_markets,n_markets))
     for i in range(n_markets):
@@ -134,7 +147,12 @@ def compute_dist_matrix(M, dist_func):
 
 
 def group_norm(num_cluster, included, cluster, weights, show,weightage):
-    included = np.array(included) ##1-89
+    """
+    normalize the weights within each cluster such that
+    the sum of weights of markets from ith cluster = weightage for ith cluster
+    the sum of weightages of all clusters = 1
+    """
+    included = np.array(included) 
     for i in range(num_cluster):
         w = weightage[i]
         indices = included[cluster==i]
@@ -162,12 +180,10 @@ def myTradingSystem(DATE, CLOSE, settings):
     filtered=0
     date = DATE[-1]
     settings['counter']+=1
-    if settings['counter']==1:
-        settings['train_period'], settings['accuracies'] = set_train_period(path, CLOSE, settings['train_period'], 
-                                                                            settings['accuracies'])
-##    weights,acc = read_saved_data(path,date)
-##    if weights:
-##        return saved_results[0], saved_results[1]
+    if settings['counter']==1:###first day set up the lookback by search from 50~500
+        periods, accuracies = set_train_period(CLOSE, settings['train_period'], settings['accuracies'])
+        settings['train_period'] = periods
+        settings['accuracies'] = accuracies
     
 
     ### 1. Data preprocessing: from raw data to input 
@@ -213,20 +229,11 @@ def myTradingSystem(DATE, CLOSE, settings):
     acc = settings['accuracies']
     included = np.nonzero(weights)[0]
     settings['num_trades'].append(included.size)
-    print("(average daily trades/ total): ({}/{})".format(round(np.mean(settings['num_trades']),2),nMarkets-1))
-    #save_daily(path, date, weights, acc)
+    print("(average daily trades/ total markets): ({}/{})".format(round(np.mean(settings['num_trades']),2),nMarkets-1))
 
-    if cluster_on:
-        #if build: ##update value
+    if cluster_on and num_cluster>1:
         clusters, weightage = cluster(CLOSE[-cluster_period:,included], num_cluster, np.array(acc)[included], dist_func, smooth_alpha)
-        settings['clusters']=clusters 
-        settings['weightage']=weightage
-        settings['included']=included
-##        else: ## use old values
-##            clusters = settings['clusters']
-##            weightage = settings['weightage']
-##            included=settings['included']
-        weights = group_norm(num_cluster, included, clusters, np.array(weights), False, weightage)           
+        weights = group_norm(num_cluster, included, clusters, np.array(weights), build, weightage)           
         
     return weights, settings
 

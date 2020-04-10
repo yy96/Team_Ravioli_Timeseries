@@ -7,6 +7,15 @@ import os
 
 #========== 1. HW helper functions ==========#
 def eval_exponential(curr_market, train_period, test_period, period):
+    """
+    helper function to calculate the accuracy a model in predicting the right direction of change for the given dataset
+    simulate the prediction process using the given training and testing periods;
+    @param curr_market: the set of data to be modelled
+    @param train_period: number of observed data points to build up exponential smoothing model
+    @param test_period: number of forecasts to make using the trained model
+    @param period: the seasonality period used to build holt-winters model
+    @return accuracy: the averaged accuracy of 3 samples, each using "train_period" number of points to predict next "test_period" number of points
+    """
     acc_list = []
     for i in range(3):
         last_train = i+train_period
@@ -18,6 +27,9 @@ def eval_exponential(curr_market, train_period, test_period, period):
 
 
 def eps_predict(train,period,num_forecasts):
+    """
+    helper function called by eval_exponential() to build model, generate prediction and validate prediction
+    """
     model = eps(train, seasonal_periods=period, trend="add",seasonal="add").fit(use_boxcox=True)
     pred = model.forecast(num_forecasts)
     pred = validate(train[-1],pred)
@@ -25,6 +37,10 @@ def eps_predict(train,period,num_forecasts):
 
 
 def validate(obs,pred):
+    """
+    helper function to check if the prediction is valid;
+    if it is abnormally small/large then scale it to the normal level
+    """
     validate = abs(obs/pred)
     x = np.logical_or(validate < 0.5, validate > 1.5).astype(int)
     y = x*(validate.astype(int)-1)
@@ -33,9 +49,9 @@ def validate(obs,pred):
 
 def check(data, lookback,period,test_period):
     """
-    helper function called be set_train_period() and adjust_period()
-    @params: data: the set of datapoints to be modelled
-             lookback: the number of datapoints as training data to do multi-step ahead forecasts
+    helper function called by set_train_period() and adjust_period()
+    @param data: the set of datapoints to be modelled
+    @param lookback: the number of datapoints as training data to do multi-step ahead forecasts
     """
     model = eps(data[-lookback:], seasonal_periods=period, trend="add", seasonal="add").fit(use_boxcox=True)
     accuracy=0
@@ -45,8 +61,6 @@ def check(data, lookback,period,test_period):
     return accuracy, model
 
 
-
-#========== 2. ARIMA helper functions ==========#
 # evaluate the performace of the model based on price signal
 def eval_model(predicted, observed):
     pred = np.diff(predicted)
@@ -54,6 +68,8 @@ def eval_model(predicted, observed):
     return np.mean((pred*obs>0).astype(int))
 
 
+
+#========== 2. ARIMA helper functions ==========#
 def eval_autoarima(train, test):
     # sarima_train_model = auto_arima(curr_market, error_action='ignore', suppress_warnings=True, seasonal=True, m=4)
     train = np.log(train)
